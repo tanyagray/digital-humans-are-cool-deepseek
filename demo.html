@@ -437,60 +437,96 @@ const glowMat = new THREE.ShaderMaterial({
 const glowShell = new THREE.Mesh(glowGeo, glowMat);
 charGroup.add(glowShell);
 
-// Eyes
-function createEye(x) {
+// ─── Stylized friendly eyes (flat discs, not creepy spheres) ──────
+function createStylizedEye() {
   const group = new THREE.Group();
-  // White of eye
-  const scleraGeo = new THREE.SphereGeometry(0.22, 32, 32);
-  const scleraMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-  const sclera = new THREE.Mesh(scleraGeo, scleraMat);
-  group.add(sclera);
-  // Iris
-  const irisGeo = new THREE.SphereGeometry(0.13, 32, 32);
-  const irisMat = new THREE.MeshStandardMaterial({ color: 0x0D7377, roughness: 0.1, metalness: 0.2 });
-  const iris = new THREE.Mesh(irisGeo, irisMat);
-  iris.position.z = 0.14;
-  group.add(iris);
-  // Pupil
-  const pupilGeo = new THREE.SphereGeometry(0.07, 16, 16);
-  const pupilMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.05 });
-  const pupil = new THREE.Mesh(pupilGeo, pupilMat);
-  pupil.position.z = 0.18;
-  group.add(pupil);
-  // Highlight
-  const hlGeo = new THREE.SphereGeometry(0.04, 8, 8);
-  const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+  // Main eye shape — soft dark disc
+  const eyeShape = new THREE.Shape();
+  const w = 0.14, h = 0.18;
+  eyeShape.ellipse(0, 0, w, h, 0, Math.PI * 2, false, 0);
+  const eyeGeo = new THREE.ShapeGeometry(eyeShape, 32);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1a3a3c, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+  const eyeDisc = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeDisc.renderOrder = 1;
+  group.add(eyeDisc);
+
+  // Highlight — small white dot
+  const hlShape = new THREE.Shape();
+  hlShape.ellipse(0, 0, 0.045, 0.055, 0, Math.PI * 2, false, 0);
+  const hlGeo = new THREE.ShapeGeometry(hlShape, 16);
+  const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
   const hl = new THREE.Mesh(hlGeo, hlMat);
-  hl.position.set(0.05, 0.06, 0.2);
+  hl.position.set(0.04, 0.06, 0.002);
+  hl.renderOrder = 2;
   group.add(hl);
 
-  group.position.set(x, 0.35, 1.35);
-  group.rotation.x = -0.15;
+  // Secondary tiny highlight
+  const hl2Shape = new THREE.Shape();
+  hl2Shape.ellipse(0, 0, 0.02, 0.025, 0, Math.PI * 2, false, 0);
+  const hl2Geo = new THREE.ShapeGeometry(hl2Shape, 8);
+  const hl2Mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+  const hl2 = new THREE.Mesh(hl2Geo, hl2Mat);
+  hl2.position.set(-0.03, -0.02, 0.002);
+  hl2.renderOrder = 2;
+  group.add(hl2);
+
   return group;
 }
 
-const leftEye = createEye(-0.45);
-const rightEye = createEye(0.45);
+const leftEye = createStylizedEye();
+leftEye.position.set(-0.42, 0.38, 1.48);
+const rightEye = createStylizedEye();
+rightEye.position.set(0.42, 0.38, 1.48);
 charGroup.add(leftEye);
 charGroup.add(rightEye);
 
-// Mouth
+// ─── Mouth (integrated curved shape) ───────────────────────────────
 const mouthGroup = new THREE.Group();
-mouthGroup.position.set(0, -0.25, 1.38);
+mouthGroup.position.set(0, -0.28, 1.48);
 
-const mouthBgGeo = new THREE.CircleGeometry(0.22, 32);
-const mouthBgMat = new THREE.MeshBasicMaterial({ color: 0x1a1515, side: THREE.DoubleSide });
-const mouthBg = new THREE.Mesh(mouthBgGeo, mouthBgMat);
-mouthGroup.add(mouthBg);
+// Mouth interior — a softly rounded shape
+const mouthShape = new THREE.Shape();
+mouthShape.ellipse(0, 0, 0.14, 0.06, 0, Math.PI * 2, false, 0);
+const mouthGeo = new THREE.ShapeGeometry(mouthShape, 32);
+const mouthMat = new THREE.MeshBasicMaterial({ color: 0x1a1515, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+const mouthMesh = new THREE.Mesh(mouthGeo, mouthMat);
+mouthMesh.renderOrder = 1;
+mouthGroup.add(mouthMesh);
 
-// Lip outline
-const lipGeo = new THREE.TorusGeometry(0.22, 0.025, 16, 48);
-const lipMat = new THREE.MeshStandardMaterial({ color: 0xc47a6a, roughness: 0.4 });
-const lip = new THREE.Mesh(lipGeo, lipMat);
-mouthGroup.add(lip);
+// Subtle lip highlight above
+const lipHlShape = new THREE.Shape();
+lipHlShape.ellipse(0, 0.05, 0.12, 0.025, 0, Math.PI, false, 0);
+const lipHlGeo = new THREE.ShapeGeometry(lipHlShape, 24);
+const lipHlMat = new THREE.MeshBasicMaterial({ color: 0xd4a099, side: THREE.DoubleSide, transparent: true, opacity: 0.4, depthTest: false, depthWrite: false });
+const lipHl = new THREE.Mesh(lipHlGeo, lipHlMat);
+lipHl.renderOrder = 2;
+mouthGroup.add(lipHl);
 
-mouthGroup.scale.set(1, 0.18, 1);
 charGroup.add(mouthGroup);
+
+// Smile line (visible when mouth is closed)
+const smileGroup = new THREE.Group();
+const smileCurve = new THREE.EllipseCurve(0, 0, 0.1, 0.03, 0.15 * Math.PI, 0.85 * Math.PI, false, 0);
+const smilePts = smileCurve.getPoints(32);
+const smileShape2d = new THREE.Shape();
+smileShape2d.moveTo(smilePts[0].x, smilePts[0].y);
+for (let i = 1; i < smilePts.length; i++) {
+  smileShape2d.lineTo(smilePts[i].x, smilePts[i].y);
+}
+// Make it a thin stroke by creating an offset
+const smilePtsInner = new THREE.EllipseCurve(0, 0, 0.09, 0.02, 0.17 * Math.PI, 0.83 * Math.PI, false, 0).getPoints(32);
+for (let i = smilePtsInner.length - 1; i >= 0; i--) {
+  smileShape2d.lineTo(smilePtsInner[i].x, smilePtsInner[i].y);
+}
+const smileGeo = new THREE.ShapeGeometry(smileShape2d, 32);
+const smileMat = new THREE.MeshBasicMaterial({ color: 0x3a2824, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+const smileMesh = new THREE.Mesh(smileGeo, smileMat);
+smileMesh.renderOrder = 1;
+smileGroup.add(smileMesh);
+smileGroup.position.copy(mouthGroup.position);
+smileGroup.position.z += 0.01;
+charGroup.add(smileGroup);
 
 // ─── Particles ─────────────────────────────────────────────────────
 const particleCount = 200;
@@ -568,8 +604,12 @@ function getRMS() {
 let recognition = null;
 let finalTranscript = '';
 let interimTranscript = '';
+let restartRecoTimer = null;
 
-function createRecognition() {
+function createAndStartRecognition() {
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+  }
   const rec = new SpeechRecognition();
   rec.continuous = true;
   rec.interimResults = true;
@@ -583,7 +623,6 @@ function createRecognition() {
       if (event.results[i].isFinal) {
         finalTranscript += ' ' + t;
         finalTranscript = finalTranscript.trim();
-        // Reset silence timer — user is still talking
         resetSilenceTimer();
       } else {
         interimTranscript += t;
@@ -594,43 +633,49 @@ function createRecognition() {
   rec.onerror = (e) => {
     if (e.error === 'no-speech' || e.error === 'aborted') return;
     console.warn('Recognition error:', e.error);
-    if (e.error === 'not-allowed') {
-      setState(State.IDLE);
-      statusText.textContent = 'Microphone blocked';
-    }
   };
 
   rec.onend = () => {
-    // Restart if we're still in listening mode
-    if (currentState === State.LISTENING && isActive) {
-      try { rec.start(); } catch(e) {}
+    // Restart if active and not speaking/thinking
+    if (isActive && currentState !== State.SPEAKING && currentState !== State.THINKING) {
+      clearTimeout(restartRecoTimer);
+      restartRecoTimer = setTimeout(() => {
+        if (isActive && currentState !== State.SPEAKING && currentState !== State.THINKING) {
+          try { rec.start(); } catch(e) {}
+        }
+      }, 200);
     }
   };
 
-  return rec;
-}
-
-function startRecognition() {
-  if (recognition) {
-    try { recognition.stop(); } catch(e) {}
-  }
-  recognition = createRecognition();
+  recognition = rec;
   finalTranscript = '';
   interimTranscript = '';
-  try { recognition.start(); } catch(e) {}
+  try { rec.start(); } catch(e) {}
 }
 
-function stopRecognition() {
+function pauseRecognition() {
   if (recognition) {
     try { recognition.stop(); } catch(e) {}
-    recognition = null;
   }
 }
 
-// ─── VAD loop ──────────────────────────────────────────────────────
-const VAD_THRESHOLD = 0.018;
-const SILENCE_MS = 1400;
-const SPEECH_CONFIRM_MS = 350;
+function resumeRecognition() {
+  finalTranscript = '';
+  interimTranscript = '';
+  if (recognition) {
+    try { recognition.start(); } catch(e) {
+      // If restarting fails, create fresh
+      createAndStartRecognition();
+    }
+  } else {
+    createAndStartRecognition();
+  }
+}
+
+// ─── VAD + Silence detection ───────────────────────────────────────
+const VAD_THRESHOLD = 0.012;
+const SILENCE_MS = 1500;
+const SPEECH_CONFIRM_MS = 300;
 
 function resetSilenceTimer() {
   clearTimeout(silenceTimer);
@@ -642,14 +687,12 @@ function onSilenceDetected() {
   userSpeaking = false;
 
   const transcript = (finalTranscript + ' ' + interimTranscript).trim();
-  stopRecognition();
-
-  if (transcript.length > 2) {
+  if (transcript.length > 1) {
+    // Pause recognition while processing
+    pauseRecognition();
     handleUserSpeech(transcript);
   } else {
     setState(State.IDLE);
-    // Resume VAD
-    setTimeout(() => { if (isActive && currentState === State.IDLE) startRecognition(); }, 400);
   }
 }
 
@@ -657,8 +700,7 @@ async function handleUserSpeech(text) {
   addTranscript('user', text);
   setState(State.THINKING);
 
-  // Simulate thinking time
-  const thinkTime = 600 + text.length * 15 + Math.random() * 600;
+  const thinkTime = 600 + text.length * 15 + Math.random() * 500;
   await new Promise(r => setTimeout(r, thinkTime));
 
   const response = conversationEngine.generateResponse(text);
@@ -667,29 +709,29 @@ async function handleUserSpeech(text) {
   // Resume listening
   if (isActive) {
     setState(State.IDLE);
-    startRecognition();
+    resumeRecognition();
   }
 }
 
+// Monitor VAD — runs via rAF, detects speech start from mic energy
 function vadLoop() {
-  if (!isActive || currentState === State.SPEAKING) {
+  if (!isActive || currentState === State.SPEAKING || currentState === State.THINKING) {
     requestAnimationFrame(vadLoop);
     return;
   }
 
   const rms = getRMS();
-  const isSpeech = rms > VAD_THRESHOLD;
 
-  if (isSpeech && !userSpeaking) {
-    // Possible speech start
+  if (rms > VAD_THRESHOLD && !userSpeaking) {
     clearTimeout(speechConfirmTimer);
     speechConfirmTimer = setTimeout(() => {
-      userSpeaking = true;
-      setState(State.LISTENING);
-      startRecognition();
-      resetSilenceTimer();
+      if (!userSpeaking && isActive) {
+        userSpeaking = true;
+        setState(State.LISTENING);
+        resetSilenceTimer();
+      }
     }, SPEECH_CONFIRM_MS);
-  } else if (!isSpeech && userSpeaking) {
+  } else if (userSpeaking) {
     resetSilenceTimer();
   }
 
@@ -713,11 +755,13 @@ function speakResponse(text) {
       || v.name.includes('Zira'));
     if (pref) utterance.voice = pref;
 
-    // Viseme sequence from text
+    // Build viseme sequence
     const visemes = textToVisemes(text);
     let visemeIdx = 0;
-    let visemeInterval = null;
-    const estimatedDuration = text.length * 55; // rough ms estimate
+    const estimatedDuration = text.length * 55;
+    const visemeInterval = Math.max(estimatedDuration / Math.max(visemes.length, 1), 50);
+
+    let visemeTimer = null;
 
     utterance.onboundary = (e) => {
       if (e.charIndex !== undefined && visemes.length > 0) {
@@ -729,25 +773,23 @@ function speakResponse(text) {
     };
 
     utterance.onstart = () => {
-      // Drive lip sync
-      const visemeDuration = Math.max(estimatedDuration / Math.max(visemes.length, 1), 40);
-      visemeInterval = setInterval(() => {
+      visemeTimer = setInterval(() => {
         if (visemeIdx < visemes.length) {
           applyViseme(visemes[visemeIdx]);
           visemeIdx++;
         }
-      }, visemeDuration);
+      }, visemeInterval);
     };
 
     utterance.onend = () => {
-      clearInterval(visemeInterval);
-      applyViseme({ h: 0.15, w: 1.0, r: 0.0 });
+      clearInterval(visemeTimer);
+      applyViseme({ h: 0.12, w: 1.0, r: 0.0 });
       resolve();
     };
 
     utterance.onerror = () => {
-      clearInterval(visemeInterval);
-      applyViseme({ h: 0.15, w: 1.0, r: 0.0 });
+      clearInterval(visemeTimer);
+      applyViseme({ h: 0.12, w: 1.0, r: 0.0 });
       resolve();
     };
 
@@ -797,11 +839,11 @@ function textToVisemes(text) {
   return visemes.length > 0 ? visemes : [defaultVis];
 }
 
+// Current viseme target — smoothly interpolated in animation loop
+let targetViseme = { h: 0.12, w: 1.0, r: 0.0 };
+
 function applyViseme(v) {
-  const targetScaleY = v.h * 1.5 + 0.08;
-  mouthGroup.scale.y += (targetScaleY - mouthGroup.scale.y) * 0.4;
-  const targetScaleX = v.w * 0.8 + 0.2;
-  mouthGroup.scale.x += (targetScaleX - mouthGroup.scale.x) * 0.4;
+  targetViseme = v;
 }
 
 // ─── Conversation Engine ───────────────────────────────────────────
@@ -1049,6 +1091,8 @@ function addTranscript(who, text) {
 
 // ─── Animation loop ────────────────────────────────────────────────
 const clock = new THREE.Clock();
+let currentMouthY = 0.08; // tracked for smooth interpolation
+
 function animate() {
   requestAnimationFrame(animate);
 
@@ -1069,24 +1113,59 @@ function animate() {
   glowMat.uniforms.uIntensity.value = 1.0 + bodyMat.uniforms.uSpeak.value * 0.6
     + bodyMat.uniforms.uListen.value * 0.3;
 
-  // Eye tracking — gentle random gaze
-  const gazeX = Math.sin(t * 0.7) * 0.06 + Math.sin(t * 1.3) * 0.04;
-  const gazeY = Math.cos(t * 0.8) * 0.05 + Math.cos(t * 1.1) * 0.03;
-  leftEye.rotation.set(-0.15 + gazeY, gazeX, 0);
-  rightEye.rotation.set(-0.15 + gazeY, gazeX, 0);
+  // ── Eyes (flat discs) ────────────────────────────────────────────
+  const blinkCycle = Math.sin(t * 0.41 + 0.3) * 0.5 + 0.5;
+  const shouldBlink = blinkCycle > 0.978;
 
-  // Blink
-  const blinkCycle = Math.sin(t * 0.33) * 0.5 + 0.5;
-  const shouldBlink = blinkCycle > 0.97 || (currentState === State.LISTENING && blinkCycle > 0.94);
-  leftEye.scale.y += (shouldBlink ? 0.08 : 1.0 - leftEye.scale.y) * 0.5;
-  rightEye.scale.y += (shouldBlink ? 0.08 : 1.0 - rightEye.scale.y) * 0.5;
+  // Quick blink — fast close, fast open, don't go too thin
+  const blinkTarget = shouldBlink ? 0.12 : 1.0;
+  const blinkSpeed = shouldBlink ? 0.7 : 0.35;
+  [leftEye, rightEye].forEach(eye => {
+    eye.scale.y += (blinkTarget - eye.scale.y) * blinkSpeed;
+    eye.scale.x += (1.0 - eye.scale.x) * 0.2;
+  });
 
-  // Look wider when listening
-  const listenWide = 1.0 + bodyMat.uniforms.uListen.value * 0.15;
-  leftEye.scale.set(1 * listenWide, leftEye.scale.y * listenWide, 1 * listenWide);
-  rightEye.scale.set(1 * listenWide, rightEye.scale.y * listenWide, 1 * listenWide);
+  // Widen when listening
+  const listenWide = 1.0 + bodyMat.uniforms.uListen.value * 0.18;
+  leftEye.scale.set(
+    leftEye.scale.x * 0.9 + listenWide * 0.1,
+    leftEye.scale.y,
+    1
+  );
+  rightEye.scale.set(
+    rightEye.scale.x * 0.9 + listenWide * 0.1,
+    rightEye.scale.y,
+    1
+  );
 
-  // Particles
+  // Gentle gaze — slight position shift
+  const gazeX = Math.sin(t * 0.7) * 0.012 + Math.sin(t * 1.3) * 0.008;
+  const gazeY = Math.cos(t * 0.8) * 0.008 + Math.cos(t * 1.1) * 0.006;
+  leftEye.position.x = -0.42 + gazeX;
+  leftEye.position.y = 0.38 + gazeY;
+  rightEye.position.x = 0.42 + gazeX;
+  rightEye.position.y = 0.38 + gazeY;
+
+  // ── Mouth — smooth viseme interpolation ──────────────────────────
+  const mouthTargetY = targetViseme.h * 1.6 + 0.04;
+  const mouthTargetX = targetViseme.w * 0.8 + 0.2;
+  currentMouthY += (mouthTargetY - currentMouthY) * 18 * dt;
+  mouthGroup.scale.set(
+    mouthGroup.scale.x + (mouthTargetX - mouthGroup.scale.x) * 12 * dt,
+    currentMouthY,
+    1
+  );
+
+  // Smile line visible when mouth is closed, fade when speaking
+  const mouthOpenAmount = currentMouthY / 0.5; // 0 = closed, 1+ = open
+  smileGroup.visible = mouthOpenAmount < 0.35;
+  smileMesh.material.opacity = Math.max(0, 1 - mouthOpenAmount * 3);
+
+  // Mouth interior only visible when open
+  mouthMesh.visible = currentMouthY > 0.06;
+  lipHl.visible = currentMouthY > 0.06;
+
+  // ── Particles ────────────────────────────────────────────────────
   const posArr = particles.geometry.attributes.position.array;
   for (let i = 0; i < particleCount; i++) {
     const i3 = i * 3;
@@ -1102,7 +1181,6 @@ function animate() {
     posArr[i3 + 1] = by + Math.sin(angle * 0.7) * driftR + Math.cos(t * 0.5 + i) * 0.04;
     posArr[i3 + 2] = bz + Math.cos(angle * 0.6) * driftR;
 
-    // Pull inward when listening
     if (bodyMat.uniforms.uListen.value > 0.1) {
       const dist = Math.sqrt(bx*bx + by*by + bz*bz);
       const nx = bx / dist, ny = by / dist, nz = bz / dist;
@@ -1114,19 +1192,11 @@ function animate() {
   }
   particles.geometry.attributes.position.needsUpdate = true;
 
-  // Mouth return to neutral when not speaking
-  if (currentState !== State.SPEAKING) {
-    const targetY = 0.18;
-    mouthGroup.scale.y += (targetY - mouthGroup.scale.y) * 0.2;
-    mouthGroup.scale.x += (1.0 - mouthGroup.scale.x) * 0.2;
-  }
+  // ── Character motion ─────────────────────────────────────────────
+  charGroup.rotation.y = Math.sin(t * 0.25) * 0.08;
+  charGroup.rotation.x = Math.sin(t * 0.3) * 0.03;
 
-  // Gentle character rotation
-  charGroup.rotation.y = Math.sin(t * 0.25) * 0.1;
-  charGroup.rotation.x = Math.sin(t * 0.3) * 0.04;
-
-  // Breathing
-  const breathe = 1.0 + Math.sin(t * 0.6) * 0.01;
+  const breathe = 1.0 + Math.sin(t * 0.6) * 0.008;
   charGroup.scale.setScalar(breathe);
 
   renderer.render(scene, camera);
@@ -1141,15 +1211,21 @@ async function init() {
   // Start render loop
   animate();
 
-  // Handle start
+  // Start sequence — request mic, greet, then begin continuous listening
   async function start() {
     if (isActive) return;
     try {
       await initMic();
       isActive = true;
       overlay.classList.add('hidden');
+      setState(State.THINKING);
+      await new Promise(r => setTimeout(r, 800));
+      const greeting = conversationEngine.pick([
+        "Hi there! I'm Ava. It's so nice to meet you. How are you doing today?",
+        "Hello! I'm Ava, your digital companion. I've been looking forward to talking with you. How's your day going?",
+      ]);
+      await speakResponse(greeting);
       setState(State.IDLE);
-      statusText.textContent = 'Listening...';
       startRecognition();
       vadLoop();
     } catch (e) {
@@ -1161,10 +1237,9 @@ async function init() {
 
   startBtn.addEventListener('click', start);
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) start();
+    if (e.target === overlay || e.target === startBtn) start();
   });
 
-  // Keyboard shortcut
   document.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && e.target === document.body && !isActive) {
       e.preventDefault();
@@ -1172,45 +1247,12 @@ async function init() {
     }
   });
 
-  // Resize handler
   window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
   });
-
-  // Speak initial greeting after activation
-  const origStart = start;
-  // Override to add greeting
-  overlay.addEventListener('click', async function greetingWrapper(e) {
-    if (e.target !== overlay && e.target !== startBtn) return;
-  }, { once: false });
 }
-
-// Monkey-patch the start to include greeting
-const origAddEventListener = overlay.addEventListener.bind(overlay);
-startBtn.addEventListener('click', async () => {
-  if (isActive) return;
-  try {
-    await initMic();
-    isActive = true;
-    overlay.classList.add('hidden');
-    setState(State.THINKING);
-    await new Promise(r => setTimeout(r, 800));
-    const greeting = conversationEngine.pick([
-      "Hi there! I'm Ava. It's so nice to meet you. How are you doing today?",
-      "Hello! I'm Ava, your digital companion. I've been looking forward to talking with you. How's your day going?",
-    ]);
-    await speakResponse(greeting);
-    setState(State.IDLE);
-    startRecognition();
-    vadLoop();
-  } catch (e) {
-    console.error('Mic access failed:', e);
-    setState(State.IDLE);
-    statusText.textContent = 'Microphone access needed';
-  }
-});
 
 init();
 </script>
