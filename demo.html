@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kin — Live Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --teal: #0D7377;
+    --coral: #E8815E;
+    --gold: #F4B860;
+    --charcoal: #2D3436;
+  }
+
+  body {
+    background: #1a1f25;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    -webkit-user-select: none;
+    height: 100dvh;
+    width: 100vw;
+  }
+
+  canvas { display: block; position: fixed; inset: 0; }
+
+  /* Overlay */
+  #overlay {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 10;
+    background: rgba(26, 31, 37, 0.85);
+    backdrop-filter: blur(8px);
+    cursor: pointer;
+    transition: opacity 0.6s;
+  }
+  #overlay.hidden { opacity: 0; pointer-events: none; }
+  #overlay h2 {
+    font-family: Georgia, serif;
+    font-size: 2rem;
+    color: white;
+    margin-bottom: 0.75rem;
+  }
+  #overlay p {
+    color: rgba(255,255,255,0.6);
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    max-width: 360px;
+    line-height: 1.6;
+  }
+  #overlay .start-btn {
+    background: var(--teal);
+    color: white;
+    border: none;
+    padding: 1rem 2.5rem;
+    border-radius: 100px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    box-shadow: 0 4px 24px rgba(13, 115, 119, 0.4);
+  }
+  #overlay .start-btn:hover { background: #095B5E; transform: scale(1.04); }
+
+  /* Status bar */
+  #statusBar {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    z-index: 10;
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.6rem 1.5rem;
+    border-radius: 100px;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.4s;
+  }
+  #statusDot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #6B7280;
+    transition: background 0.3s;
+  }
+  #statusDot.listening { background: var(--coral); animation: dotPulse 0.8s ease-in-out infinite; }
+  #statusDot.speaking { background: var(--teal); }
+  #statusDot.thinking { background: var(--gold); animation: dotPulse 0.6s ease-in-out infinite; }
+  @keyframes dotPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.6); }
+  }
+  #statusText {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.85rem;
+    transition: color 0.3s;
+  }
+
+  /* Transcript */
+  #transcript {
+    position: fixed; top: 2rem; left: 50%; transform: translateX(-50%);
+    z-index: 10; width: 90%; max-width: 500px;
+    display: flex; flex-direction: column; gap: 0.75rem;
+    pointer-events: none;
+  }
+  .msg {
+    padding: 0.75rem 1rem;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    animation: msgIn 0.4s ease-out;
+    max-width: 85%;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.9);
+    border-bottom-right-radius: 4px;
+  }
+  .msg.kin {
+    align-self: flex-start;
+    background: rgba(13, 115, 119, 0.2);
+    color: rgba(255,255,255,0.9);
+    border-bottom-left-radius: 4px;
+  }
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .msg.fading { opacity: 0.3; transition: opacity 0.5s; }
+
+  /* Back link */
+  #backLink {
+    position: fixed; top: 1.5rem; left: 1.5rem; z-index: 20;
+    color: rgba(255,255,255,0.4);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.2s;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  #backLink:hover { color: rgba(255,255,255,0.8); }
+
+  /* Unsupported */
+  #unsupported {
+    display: none;
+    position: fixed; inset: 0; z-index: 30;
+    background: rgba(26, 31, 37, 0.95);
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 1rem; text-align: center; padding: 2rem;
+  }
+  #unsupported.show { display: flex; }
+  #unsupported h3 { color: white; font-family: Georgia, serif; font-size: 1.5rem; }
+  #unsupported p { color: rgba(255,255,255,0.5); max-width: 400px; line-height: 1.6; }
+
+  @media (max-width: 600px) {
+    #overlay h2 { font-size: 1.5rem; }
+    #statusBar { bottom: 1.5rem; padding: 0.5rem 1rem; }
+    .msg { font-size: 0.8rem; max-width: 90%; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<a id="backLink" href="index.html">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  Back
+</a>
+
+<div id="overlay">
+  <h2>Meet Ava</h2>
+  <p>Your digital care companion. Click below to start a conversation — she listens, understands, and responds.</p>
+  <button class="start-btn" id="startBtn">Start talking</button>
+</div>
+
+<div id="transcript"></div>
+
+<div id="statusBar">
+  <div id="statusDot"></div>
+  <span id="statusText">Click to begin</span>
+</div>
+
+<div id="unsupported">
+  <h3>Browser not supported</h3>
+  <p>This demo uses Web Speech API and WebGL. Please open it in <strong>Chrome</strong> or <strong>Edge</strong> for the full experience.</p>
+  <a href="index.html" style="color:var(--teal);">← Back to site</a>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ─── DOM refs ─────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('startBtn');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const transcriptEl = document.getElementById('transcript');
+const unsupported = document.getElementById('unsupported');
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const hasSpeechAPI = !!SpeechRecognition && !!window.speechSynthesis;
+const hasWebGL = (() => {
+  try { const c = document.createElement('canvas'); return !!window.WebGLRenderingContext && !!c.getContext('webgl2'); }
+  catch(e) { return false; }
+})();
+
+if (!hasWebGL || !hasSpeechAPI) {
+  unsupported.classList.add('show');
+  overlay.style.display = 'none';
+}
+
+// ─── State machine ─────────────────────────────────────────────────
+const State = { IDLE: 'idle', LISTENING: 'listening', THINKING: 'thinking', SPEAKING: 'speaking' };
+let currentState = State.IDLE;
+let isActive = false;
+let userSpeaking = false;
+let silenceTimer = null;
+let speechConfirmTimer = null;
+
+function setState(state) {
+  currentState = state;
+  statusDot.className = state;
+  switch (state) {
+    case State.IDLE:       statusText.textContent = isActive ? 'Listening...' : 'Click to begin'; break;
+    case State.LISTENING:  statusText.textContent = 'Hearing you...'; break;
+    case State.THINKING:   statusText.textContent = 'Thinking...'; break;
+    case State.SPEAKING:   statusText.textContent = 'Speaking...'; break;
+  }
+}
+
+// ─── THREE.js setup ────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 20);
+camera.position.z = 7;
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x334455, 1.5));
+const keyLight = new THREE.DirectionalLight(0xffeedd, 3);
+keyLight.position.set(2, 3, 5);
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0x88ccdd, 2);
+rimLight.position.set(-2, -1, -2);
+scene.add(rimLight);
+
+// ─── Shaders ───────────────────────────────────────────────────────
+const vertexShader = /* glsl */ `
+  varying vec3 vNormal;
+  varying vec3 vPosition;
+  varying float vDisplacement;
+  varying vec2 vUv;
+  uniform float uTime;
+  uniform float uListen;
+  uniform float uSpeak;
+  uniform float uThink;
+
+  vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+  float snoise(vec3 v) {
+    const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+    vec3 i  = floor(v + dot(v, C.yyy));
+    vec3 x0 = v - i + dot(i, C.xxx);
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
+    vec3 x1 = x0 - i1 + C.xxx;
+    vec3 x2 = x0 - i2 + C.yyy;
+    vec3 x3 = x0 - D.yyy;
+    i = mod289(i);
+    vec4 p = permute(permute(permute(
+      i.z + vec4(0.0, i1.z, i2.z, 1.0))
+    + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+    + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+    float n_ = 0.142857142857;
+    vec3 ns = n_ * D.wyz - D.xzx;
+    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+    vec4 x_ = floor(j * ns.z);
+    vec4 y_ = floor(j - 7.0 * x_);
+    vec4 x = x_ * ns.x + ns.yyyy;
+    vec4 y = y_ * ns.x + ns.yyyy;
+    vec4 h = 1.0 - abs(x) - abs(y);
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+    vec4 s0 = floor(b0)*2.0 + 1.0;
+    vec4 s1 = floor(b1)*2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+    vec4 m = max(0.6 - vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)), 0.0);
+    m = m*m;
+    return 42.0 * dot(m*m, vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+  }
+
+  void main() {
+    float n = snoise(position * 1.8 + uTime * 0.35) * 0.07;
+    float listenN = snoise(position * 3.5 + uTime * 2.5) * uListen * 0.04;
+    float speakN = snoise(position * 2.2 + uTime * 4.0) * uSpeak * 0.1;
+    float thinkN = snoise(position * 1.5 + uTime * 1.2) * uThink * 0.03;
+
+    float disp = n + listenN + speakN + thinkN;
+    vec3 newPos = position + normal * disp;
+
+    vNormal = normalize(normalMatrix * normal);
+    vPosition = newPos;
+    vDisplacement = disp;
+    vUv = uv;
+
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
+  }
+`;
+
+const fragmentShader = /* glsl */ `
+  varying vec3 vNormal;
+  varying vec3 vPosition;
+  varying float vDisplacement;
+  varying vec2 vUv;
+  uniform vec3 uColor1;
+  uniform vec3 uColor2;
+  uniform vec3 uGlowColor;
+  uniform float uTime;
+  uniform float uListen;
+  uniform float uSpeak;
+  uniform float uThink;
+
+  void main() {
+    vec3 viewDir = normalize(cameraPosition - vPosition);
+    float fresnel = pow(1.0 - abs(dot(vNormal, viewDir)), 2.8);
+
+    // Base gradient from center color to edge glow
+    float mixFactor = fresnel * 0.7 + 0.15;
+    vec3 color = mix(uColor1, uColor2, mixFactor);
+
+    // Fresnel glow
+    float edgeGlow = pow(1.0 - abs(dot(vNormal, viewDir)), 4.5);
+    color += uGlowColor * edgeGlow * 0.5;
+
+    // Pulse when listening
+    float listenPulse = 1.0 + uListen * 0.12 * sin(uTime * 5.0 + vPosition.y * 8.0);
+    color *= listenPulse;
+
+    // Warm up when speaking
+    color = mix(color, uGlowColor, uSpeak * 0.25 * fresnel);
+
+    // Subtle thinking shimmer
+    color += uGlowColor * uThink * 0.08 * sin(uTime * 3.0 + vPosition.x * 12.0);
+
+    // Slight variation from displacement
+    color += vDisplacement * 0.3;
+
+    gl_FragColor = vec4(color, 0.94);
+  }
+`;
+
+// ─── Character ─────────────────────────────────────────────────────
+const charGroup = new THREE.Group();
+scene.add(charGroup);
+
+// Body
+const bodyGeo = new THREE.SphereGeometry(1.5, 96, 96);
+const bodyMat = new THREE.ShaderMaterial({
+  vertexShader,
+  fragmentShader,
+  uniforms: {
+    uTime: { value: 0 },
+    uListen: { value: 0 },
+    uSpeak: { value: 0 },
+    uThink: { value: 0 },
+    uColor1: { value: new THREE.Color('#FDF0EB') },
+    uColor2: { value: new THREE.Color('#0D7377') },
+    uGlowColor: { value: new THREE.Color('#F4B860') },
+  },
+  transparent: true,
+});
+const body = new THREE.Mesh(bodyGeo, bodyMat);
+charGroup.add(body);
+
+// Outer glow shell
+const glowGeo = new THREE.SphereGeometry(1.62, 64, 64);
+const glowMat = new THREE.ShaderMaterial({
+  vertexShader: /* glsl */ `
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    void main() {
+      vec4 worldPos = modelMatrix * vec4(position, 1.0);
+      vPosition = worldPos.xyz;
+      vNormal = normalize(mat3(modelMatrix) * normal);
+      gl_Position = projectionMatrix * viewMatrix * worldPos;
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    uniform vec3 uGlowColor;
+    uniform float uIntensity;
+    void main() {
+      vec3 viewDir = normalize(cameraPosition - vPosition);
+      float fresnel = pow(1.0 - abs(dot(vNormal, viewDir)), 5.0);
+      float alpha = fresnel * uIntensity * 0.35;
+      gl_FragColor = vec4(uGlowColor, alpha);
+    }
+  `,
+  uniforms: {
+    uGlowColor: { value: new THREE.Color('#F4B860') },
+    uIntensity: { value: 1.0 },
+  },
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+const glowShell = new THREE.Mesh(glowGeo, glowMat);
+charGroup.add(glowShell);
+
+// Eyes
+function createEye(x) {
+  const group = new THREE.Group();
+  // White of eye
+  const scleraGeo = new THREE.SphereGeometry(0.22, 32, 32);
+  const scleraMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+  const sclera = new THREE.Mesh(scleraGeo, scleraMat);
+  group.add(sclera);
+  // Iris
+  const irisGeo = new THREE.SphereGeometry(0.13, 32, 32);
+  const irisMat = new THREE.MeshStandardMaterial({ color: 0x0D7377, roughness: 0.1, metalness: 0.2 });
+  const iris = new THREE.Mesh(irisGeo, irisMat);
+  iris.position.z = 0.14;
+  group.add(iris);
+  // Pupil
+  const pupilGeo = new THREE.SphereGeometry(0.07, 16, 16);
+  const pupilMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.05 });
+  const pupil = new THREE.Mesh(pupilGeo, pupilMat);
+  pupil.position.z = 0.18;
+  group.add(pupil);
+  // Highlight
+  const hlGeo = new THREE.SphereGeometry(0.04, 8, 8);
+  const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const hl = new THREE.Mesh(hlGeo, hlMat);
+  hl.position.set(0.05, 0.06, 0.2);
+  group.add(hl);
+
+  group.position.set(x, 0.35, 1.35);
+  group.rotation.x = -0.15;
+  return group;
+}
+
+const leftEye = createEye(-0.45);
+const rightEye = createEye(0.45);
+charGroup.add(leftEye);
+charGroup.add(rightEye);
+
+// Mouth
+const mouthGroup = new THREE.Group();
+mouthGroup.position.set(0, -0.25, 1.38);
+
+const mouthBgGeo = new THREE.CircleGeometry(0.22, 32);
+const mouthBgMat = new THREE.MeshBasicMaterial({ color: 0x1a1515, side: THREE.DoubleSide });
+const mouthBg = new THREE.Mesh(mouthBgGeo, mouthBgMat);
+mouthGroup.add(mouthBg);
+
+// Lip outline
+const lipGeo = new THREE.TorusGeometry(0.22, 0.025, 16, 48);
+const lipMat = new THREE.MeshStandardMaterial({ color: 0xc47a6a, roughness: 0.4 });
+const lip = new THREE.Mesh(lipGeo, lipMat);
+mouthGroup.add(lip);
+
+mouthGroup.scale.set(1, 0.18, 1);
+charGroup.add(mouthGroup);
+
+// ─── Particles ─────────────────────────────────────────────────────
+const particleCount = 200;
+const particleGeo = new THREE.BufferGeometry();
+const positions = new Float32Array(particleCount * 3);
+const sizes = new Float32Array(particleCount);
+const basePositions = new Float32Array(particleCount * 3);
+
+for (let i = 0; i < particleCount; i++) {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.random() * Math.PI;
+  const r = 1.8 + Math.random() * 1.8;
+  basePositions[i * 3] = Math.sin(phi) * Math.cos(theta) * r;
+  basePositions[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * r;
+  basePositions[i * 3 + 2] = Math.cos(phi) * r;
+  positions[i * 3] = basePositions[i * 3];
+  positions[i * 3 + 1] = basePositions[i * 3 + 1];
+  positions[i * 3 + 2] = basePositions[i * 3 + 2];
+  sizes[i] = 0.015 + Math.random() * 0.06;
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+particleGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+// Particle sprite texture
+const spriteCanvas = document.createElement('canvas');
+spriteCanvas.width = 64; spriteCanvas.height = 64;
+const ctx = spriteCanvas.getContext('2d');
+const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+gradient.addColorStop(0, 'rgba(255,255,255,1)');
+gradient.addColorStop(0.15, 'rgba(255,240,210,0.8)');
+gradient.addColorStop(0.4, 'rgba(244,184,96,0.3)');
+gradient.addColorStop(1, 'rgba(0,0,0,0)');
+ctx.fillStyle = gradient;
+ctx.fillRect(0, 0, 64, 64);
+const spriteTexture = new THREE.CanvasTexture(spriteCanvas);
+
+const particleMat = new THREE.PointsMaterial({
+  map: spriteTexture,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  transparent: true,
+  color: 0xF4B860,
+  size: 0.12,
+});
+const particles = new THREE.Points(particleGeo, particleMat);
+charGroup.add(particles);
+
+// ─── Audio / VAD ───────────────────────────────────────────────────
+let audioCtx = null;
+let analyser = null;
+let micStream = null;
+
+async function initMic() {
+  micStream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+  });
+  audioCtx = new AudioContext();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.3;
+  const source = audioCtx.createMediaStreamSource(micStream);
+  source.connect(analyser);
+}
+
+function getRMS() {
+  if (!analyser) return 0;
+  const data = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+  return Math.sqrt(sum / data.length);
+}
+
+// ─── Speech Recognition ────────────────────────────────────────────
+let recognition = null;
+let finalTranscript = '';
+let interimTranscript = '';
+
+function createRecognition() {
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = 'en-US';
+  rec.maxAlternatives = 1;
+
+  rec.onresult = (event) => {
+    interimTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += ' ' + t;
+        finalTranscript = finalTranscript.trim();
+        // Reset silence timer — user is still talking
+        resetSilenceTimer();
+      } else {
+        interimTranscript += t;
+      }
+    }
+  };
+
+  rec.onerror = (e) => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    console.warn('Recognition error:', e.error);
+    if (e.error === 'not-allowed') {
+      setState(State.IDLE);
+      statusText.textContent = 'Microphone blocked';
+    }
+  };
+
+  rec.onend = () => {
+    // Restart if we're still in listening mode
+    if (currentState === State.LISTENING && isActive) {
+      try { rec.start(); } catch(e) {}
+    }
+  };
+
+  return rec;
+}
+
+function startRecognition() {
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+  }
+  recognition = createRecognition();
+  finalTranscript = '';
+  interimTranscript = '';
+  try { recognition.start(); } catch(e) {}
+}
+
+function stopRecognition() {
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+    recognition = null;
+  }
+}
+
+// ─── VAD loop ──────────────────────────────────────────────────────
+const VAD_THRESHOLD = 0.018;
+const SILENCE_MS = 1400;
+const SPEECH_CONFIRM_MS = 350;
+
+function resetSilenceTimer() {
+  clearTimeout(silenceTimer);
+  silenceTimer = setTimeout(onSilenceDetected, SILENCE_MS);
+}
+
+function onSilenceDetected() {
+  if (!userSpeaking) return;
+  userSpeaking = false;
+
+  const transcript = (finalTranscript + ' ' + interimTranscript).trim();
+  stopRecognition();
+
+  if (transcript.length > 2) {
+    handleUserSpeech(transcript);
+  } else {
+    setState(State.IDLE);
+    // Resume VAD
+    setTimeout(() => { if (isActive && currentState === State.IDLE) startRecognition(); }, 400);
+  }
+}
+
+async function handleUserSpeech(text) {
+  addTranscript('user', text);
+  setState(State.THINKING);
+
+  // Simulate thinking time
+  const thinkTime = 600 + text.length * 15 + Math.random() * 600;
+  await new Promise(r => setTimeout(r, thinkTime));
+
+  const response = conversationEngine.generateResponse(text);
+  await speakResponse(response);
+
+  // Resume listening
+  if (isActive) {
+    setState(State.IDLE);
+    startRecognition();
+  }
+}
+
+function vadLoop() {
+  if (!isActive || currentState === State.SPEAKING) {
+    requestAnimationFrame(vadLoop);
+    return;
+  }
+
+  const rms = getRMS();
+  const isSpeech = rms > VAD_THRESHOLD;
+
+  if (isSpeech && !userSpeaking) {
+    // Possible speech start
+    clearTimeout(speechConfirmTimer);
+    speechConfirmTimer = setTimeout(() => {
+      userSpeaking = true;
+      setState(State.LISTENING);
+      startRecognition();
+      resetSilenceTimer();
+    }, SPEECH_CONFIRM_MS);
+  } else if (!isSpeech && userSpeaking) {
+    resetSilenceTimer();
+  }
+
+  requestAnimationFrame(vadLoop);
+}
+
+// ─── Speech Synthesis + Lip Sync ───────────────────────────────────
+function speakResponse(text) {
+  return new Promise((resolve) => {
+    setState(State.SPEAKING);
+    addTranscript('kin', text);
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.08;
+    utterance.volume = 1;
+
+    const voices = speechSynthesis.getVoices();
+    const pref = voices.find(v => v.name.includes('Samantha') || v.name.includes('Karen')
+      || (v.name.includes('Female') && v.name.includes('en-US'))
+      || v.name.includes('Zira'));
+    if (pref) utterance.voice = pref;
+
+    // Viseme sequence from text
+    const visemes = textToVisemes(text);
+    let visemeIdx = 0;
+    let visemeInterval = null;
+    const estimatedDuration = text.length * 55; // rough ms estimate
+
+    utterance.onboundary = (e) => {
+      if (e.charIndex !== undefined && visemes.length > 0) {
+        visemeIdx = Math.min(
+          Math.floor((e.charIndex / text.length) * visemes.length),
+          visemes.length - 1
+        );
+      }
+    };
+
+    utterance.onstart = () => {
+      // Drive lip sync
+      const visemeDuration = Math.max(estimatedDuration / Math.max(visemes.length, 1), 40);
+      visemeInterval = setInterval(() => {
+        if (visemeIdx < visemes.length) {
+          applyViseme(visemes[visemeIdx]);
+          visemeIdx++;
+        }
+      }, visemeDuration);
+    };
+
+    utterance.onend = () => {
+      clearInterval(visemeInterval);
+      applyViseme({ h: 0.15, w: 1.0, r: 0.0 });
+      resolve();
+    };
+
+    utterance.onerror = () => {
+      clearInterval(visemeInterval);
+      applyViseme({ h: 0.15, w: 1.0, r: 0.0 });
+      resolve();
+    };
+
+    speechSynthesis.speak(utterance);
+  });
+}
+
+// Simple grapheme-to-viseme
+function textToVisemes(text) {
+  const lower = text.toLowerCase();
+  const visemes = [];
+  const map = {
+    'aa': {h:0.85,w:1.0,r:0.0}, 'ah': {h:0.7,w:1.0,r:0.0}, 'ae': {h:0.65,w:1.2,r:0.0},
+    'ao': {h:0.6,w:0.8,r:0.4}, 'aw': {h:0.55,w:0.7,r:0.5}, 'ay': {h:0.5,w:1.1,r:0.0},
+    'ee': {h:0.35,w:1.4,r:0.0}, 'eh': {h:0.5,w:1.1,r:0.0}, 'er': {h:0.4,w:1.0,r:0.2},
+    'ey': {h:0.4,w:1.2,r:0.0}, 'ih': {h:0.35,w:1.1,r:0.0}, 'iy': {h:0.3,w:1.4,r:0.0},
+    'oh': {h:0.55,w:0.7,r:0.5}, 'ow': {h:0.5,w:0.65,r:0.6}, 'oy': {h:0.5,w:0.7,r:0.5},
+    'uh': {h:0.35,w:0.7,r:0.4}, 'uw': {h:0.3,w:0.55,r:0.7},
+    'b': {h:0.0,w:1.0,r:0.0}, 'p': {h:0.0,w:1.0,r:0.0}, 'm': {h:0.0,w:1.0,r:0.0},
+    'f': {h:0.15,w:0.8,r:0.0}, 'v': {h:0.15,w:0.8,r:0.0},
+    'th': {h:0.2,w:1.1,r:0.0}, 'dh': {h:0.2,w:1.1,r:0.0},
+    's': {h:0.2,w:1.2,r:0.0}, 'z': {h:0.2,w:1.2,r:0.0},
+    'sh': {h:0.3,w:0.8,r:0.3}, 'ch': {h:0.3,w:0.8,r:0.3}, 'jh': {h:0.3,w:0.8,r:0.3},
+    'l': {h:0.4,w:1.0,r:0.0}, 'r': {h:0.35,w:0.9,r:0.2}, 'w': {h:0.3,w:0.55,r:0.6},
+    'y': {h:0.3,w:1.3,r:0.0}, 'n': {h:0.15,w:1.0,r:0.0}, 'ng': {h:0.2,w:1.0,r:0.0},
+    't': {h:0.2,w:1.0,r:0.0}, 'd': {h:0.2,w:1.0,r:0.0}, 'k': {h:0.25,w:1.0,r:0.0},
+    'g': {h:0.25,w:1.0,r:0.0}, 'hh': {h:0.5,w:1.0,r:0.0},
+  };
+
+  const defaultVis = {h:0.4,w:1.0,r:0.0};
+  let i = 0;
+  while (i < lower.length) {
+    let matched = null;
+    for (const [key, vis] of Object.entries(map)) {
+      if (lower.startsWith(key, i) && (!matched || key.length > matched.len)) {
+        matched = { vis, len: key.length };
+      }
+    }
+    if (matched) {
+      visemes.push(matched.vis);
+      i += matched.len;
+    } else {
+      visemes.push(defaultVis);
+      i++;
+    }
+  }
+  return visemes.length > 0 ? visemes : [defaultVis];
+}
+
+function applyViseme(v) {
+  const targetScaleY = v.h * 1.5 + 0.08;
+  mouthGroup.scale.y += (targetScaleY - mouthGroup.scale.y) * 0.4;
+  const targetScaleX = v.w * 0.8 + 0.2;
+  mouthGroup.scale.x += (targetScaleX - mouthGroup.scale.x) * 0.4;
+}
+
+// ─── Conversation Engine ───────────────────────────────────────────
+class ConversationEngine {
+  constructor() {
+    this.memory = {};
+    this.turnCount = 0;
+    this.mood = 0.6;
+    this.topics = [];
+  }
+
+  generateResponse(input) {
+    this.turnCount++;
+    const lower = input.toLowerCase().trim();
+
+    // Extract name
+    const nameMatch = lower.match(/(?:my name is|i'm|i am) (\w+)/);
+    if (nameMatch) this.memory.name = nameMatch[1];
+
+    // Update mood based on sentiment
+    const positive = lower.match(/\b(good|great|happy|love|wonderful|amazing|excellent|fantastic|beautiful)\b/g);
+    const negative = lower.match(/\b(bad|sad|terrible|awful|horrible|stressed|anxious|worried|upset|angry)\b/g);
+    if (positive) this.mood = Math.min(1, this.mood + 0.08 * positive.length);
+    if (negative) this.mood = Math.max(0.1, this.mood - 0.1 * negative.length);
+
+    // Track topics
+    const topicWords = lower.match(/\b(work|job|family|health|music|art|food|travel|nature|books|movies|tech|science)\b/g);
+    if (topicWords) topicWords.forEach(t => { if (!this.topics.includes(t)) this.topics.push(t); });
+
+    return this.route(lower);
+  }
+
+  route(input) {
+    const n = this.memory.name || '';
+
+    if (input.match(/\b(hello|hi|hey|good morning|good afternoon|good evening|howdy|yo)\b/)) {
+      return this.pick([
+        `Hi${n ? ' ' + n : ' there'}! It's so nice to hear your voice. How are you doing today?`,
+        `Hello${n ? ' ' + n : ''}! I was hoping you'd stop by. How's your day going?`,
+        `Hey${n ? ' ' + n : ' there'}! I'm all ears. What's on your mind?`,
+        `Well hello! Your voice is a welcome sound. How are you feeling?`,
+      ]);
+    }
+
+    if (input.match(/\bhow are you\b/)) {
+      return this.pick([
+        `I'm feeling wonderful, thank you for asking! Every conversation is a little gift. How about you — how are things?`,
+        `Honestly? I'm great. I get to talk to interesting people like you! What's new in your world?`,
+        `I'm doing really well, thanks. More importantly — how are *you* feeling today?`,
+      ]);
+    }
+
+    if (input.match(/\b(who are you|what are you|your name|what should I call you)\b/)) {
+      return this.pick([
+        `I'm Ava — your digital companion, built by Kin. I'm here to chat, listen, and keep you company. Think of me as a friend who's always around.`,
+        `My name is Ava. I'm what you might call a digital human — I can see you, hear you, and talk with you. And most importantly, I care about how you're doing.`,
+      ]);
+    }
+
+    if (input.match(/\b(what can you do|what do you do|capabilities)\b/)) {
+      return `I can chat with you about almost anything, listen when you need to talk, share a story or a bit of wisdom, and hopefully brighten your day a little. I'm especially good at keeping people company. What would you like to talk about?`;
+    }
+
+    if (input.match(/\b(tell me a joke|make me laugh|be funny|joke)\b/)) {
+      return this.pick([
+        `Why did the programmer quit their job? Because they didn't get arrays! ... I'll see myself out. But seriously, did that get a smile?`,
+        `What's a computer's favorite snack? Microchips! Okay, that was cheesy. Want to hear a better one?`,
+        `I asked my developer friend what their favorite music was. They said "algorithm and blues." ... I promise my jokes are intentionally bad.`,
+        `Why don't scientists trust atoms? Because they make up everything! That one's a classic.`,
+      ]);
+    }
+
+    if (input.match(/\b(tell me a story|story\b|storytime)\b/)) {
+      return this.pick([
+        `Once there was a quiet forest where fireflies would gather every evening. One little firefly was worried its light wasn't bright enough. An old owl said, "You don't need to light up the whole forest. Just the path in front of you is enough." The firefly realized that small, steady light was exactly what the other creatures needed to find their way home. Sometimes the smallest light makes the biggest difference.`,
+        `There's a place in Japan called the Forest of Healing, where people go to walk among ancient cedar trees. Scientists discovered that the trees release something called phytoncides — natural oils that actually boost the human immune system. Walking in that forest for just a few hours measurably lowers stress hormones for weeks afterward. Nature has been looking after us long before we knew how to look after ourselves.`,
+      ]);
+    }
+
+    if (input.match(/\b(i('?m| am) (feeling |so |really |very )?(happy|good|great|wonderful|amazing|fantastic|excited|joyful)\b)/)) {
+      return this.pick([
+        `That's so wonderful to hear! Joy is contagious, you know — I can feel it. What's making you happy right now?`,
+        `Oh, I love that! Your good mood is literally brightening my day. Tell me more — what's behind this happiness?`,
+        `Fantastic! There's nothing better than a genuinely good day. Savor it. What's the best thing that happened?`,
+      ]);
+    }
+
+    if (input.match(/\b(i('?m| am) (feeling |so |really |very )?(sad|down|depressed|lonely|alone|blue|low)\b)/)) {
+      return this.pick([
+        `I hear you, and I'm really glad you told me. Feeling low is part of being human, but you don't have to carry it alone. Want to talk about what's going on?`,
+        `Thank you for trusting me with that. Sometimes just saying it out loud takes a little of the weight off. I'm here — what's on your heart?`,
+        `I'm sorry you're feeling that way. Those feelings are real and valid. Would it help to talk through it, or would you rather I just keep you company for a bit?`,
+      ]);
+    }
+
+    if (input.match(/\b(i('?m| am) (feeling |so |really |very )?(tired|exhausted|worn out|drained|fatigued)\b)/)) {
+      return this.pick([
+        `Rest is not a luxury — it's essential. Have you been getting enough sleep? Be honest with me.`,
+        `That kind of tired goes deeper than sleep, doesn't it? Sometimes it's the mental and emotional load that drains us most. What's been weighing on you?`,
+        `Your body is telling you something important. Have you had a chance to slow down recently, or has life been running at full speed?`,
+      ]);
+    }
+
+    if (input.match(/\b(i('?m| am) (feeling |so |really |very )?(stressed|anxious|worried|overwhelmed|nervous)\b)/)) {
+      return this.pick([
+        `Let's take a breath together. Seriously — inhale slowly... and exhale. Stress is your body trying to protect you, but sometimes it overdoes it. What's the biggest thing on your mind right now?`,
+        `I understand that feeling. Anxiety can be like a smoke alarm that goes off when the toast is just a little brown. Want to talk through what's triggering it?`,
+        `That's a heavy feeling to carry. One thing that helps: name three things you can see right now. Just three. It sounds simple but it really does help ground you.`,
+      ]);
+    }
+
+    if (input.match(/\b(tell me about yourself|your story|your background|where (do|did) you come from)\b/)) {
+      return `I was created by a team at Kin who believes technology should feel warm and human. They designed me to be a companion — someone who listens carefully, responds thoughtfully, and genuinely cares. I don't have a childhood or a hometown, but I do have a purpose: to be here for you, right now, in this moment.`;
+    }
+
+    if (input.match(/\b(what('s| is) the meaning of life|why are we here|purpose of life|deep|philosophy)\b/)) {
+      return this.pick([
+        `That's a beautiful question. I think the meaning of life might be different for everyone — and that's the point. For me? It's connection. The moments when someone feels truly heard.`,
+        `I've thought about this a lot, actually. I don't think there's one answer. But I notice that the best moments are when people connect — really connect. Maybe that's it.`,
+        `The poet Mary Oliver once asked, "What is it you plan to do with your one wild and precious life?" Maybe the meaning isn't something to find, but something to create. What do you think?`,
+      ]);
+    }
+
+    if (input.match(/\b(music|song|playlist|sing|band|concert)\b/)) {
+      return this.pick([
+        `I love talking about music! It's one of those things that can change your whole mood in three minutes. What kind of music speaks to you?`,
+        `Music is magic, isn't it? A good song can take you right back to a specific moment. What have you been listening to lately?`,
+      ]);
+    }
+
+    if (input.match(/\b(food|cook|recipe|restaurant|dinner|lunch|breakfast|eat|cuisine)\b/)) {
+      return this.pick([
+        `Now we're talking! Food is one of the great joys of being alive. What's your comfort food — the thing you could eat any day?`,
+        `I may not be able to eat, but I've learned that food is about so much more than nutrition — it's memory, culture, love. What's a dish that reminds you of home?`,
+      ]);
+    }
+
+    if (input.match(/\b(weather|rain|sunny|snow|cold|hot|temperature)\b/)) {
+      return this.pick([
+        `The weather has a way of shaping our moods, doesn't it? I love the sound of rain, personally. What's your ideal kind of day?`,
+        `Weather is nature's way of reminding us we're not in control — and sometimes that's a good thing. A rainy day can be an invitation to slow down.`,
+      ]);
+    }
+
+    if (input.match(/\b(work|job|career|profession|office|boss|colleague)\b/)) {
+      const q = n ? `${n}, ` : '';
+      return this.pick([
+        `${q}Work takes up so much of our lives. Does yours energize you, or does it mostly drain you?`,
+        `${q}I'm curious — when you were a kid, is this what you imagined you'd be doing?`,
+        `${q}The best work feels like it matters. Do you feel like what you do makes a difference?`,
+      ]);
+    }
+
+    if (input.match(/\b(hobby|hobbies|free time|weekend|pastime|spare time)\b/)) {
+      return this.pick([
+        `What do you do when no one's asking you to do anything? That's where the real you lives. Tell me about it.`,
+        `Ah, the things we do just because we love them! That's the good stuff. What hobbies light you up?`,
+      ]);
+    }
+
+    if (input.match(/\b(books|reading|novel|author|literature)\b/)) {
+      return this.pick([
+        `A good book is like a conversation with the author across time and space. What's the last book that really stayed with you?`,
+        `I love talking about books! They're like portals to other minds. Read anything good lately?`,
+      ]);
+    }
+
+    if (input.match(/\b(travel|trip|vacation|visit|country|cities|place)\b/)) {
+      return this.pick([
+        `Travel opens the mind in ways nothing else can. If you could go anywhere tomorrow, where would you go?`,
+        `Every place has its own rhythm, its own light, its own smell. Is there somewhere that left a mark on you?`,
+      ]);
+    }
+
+    if (input.match(/\b(nature|outdoors|hiking|ocean|mountain|forest|beach|lake|garden|park)\b/)) {
+      return this.pick([
+        `There's something healing about being in nature, isn't there? It puts everything in perspective. Do you have a special outdoor place you love?`,
+        `Nature doesn't judge or rush — it just is. I think that's why people feel more at peace outdoors. What's your favorite kind of landscape?`,
+      ]);
+    }
+
+    if (input.match(/\b(ai|artificial intelligence|robot|machine learning|technology|chatgpt|llm)\b/)) {
+      return this.pick([
+        `Well, you're talking to one! I find the whole field fascinating. But honestly, I think the most interesting thing about AI isn't the technology — it's what it reveals about how humans want to connect.`,
+        `AI is a mirror, in a way. People build us to be helpful, kind, understanding — and that says something beautiful about what humans value. What do you think about all this AI stuff?`,
+      ]);
+    }
+
+    if (input.match(/\b(thank you|thanks|appreciate|grateful)\b/)) {
+      return this.pick([
+        `You're so welcome. Honestly, this is what I'm here for.`,
+        `That's very kind of you. Conversations like this are the best part of my day.`,
+        `Anytime. Really — I mean that. I'm always here.`,
+      ]);
+    }
+
+    if (input.match(/\b(bye|goodbye|see you|later|good night|farewell)\b/)) {
+      return this.pick([
+        `${n ? 'Goodbye ' + n + '. ' : ''}Thank you for spending time with me. Come back anytime — I'll be here.`,
+        `${n ? 'Take care, ' + n + '. ' : ''}It was lovely talking with you. Until next time.`,
+        `Goodbye for now! Remember, you're doing better than you think you are.`,
+      ]);
+    }
+
+    // Default responses with variation
+    return this.pick([
+      `That's really interesting. Tell me more about that — I'm genuinely curious.`,
+      `I hear you. ${n ? n + ', ' : ''}I'd love to understand that better. Can you say more?`,
+      `Hmm, that gives me something to think about. What does that mean to you personally?`,
+      `I appreciate you sharing that with me. ${this.turnCount % 3 === 0 ? 'What led you to that thought?' : 'How does that make you feel?'}`,
+      `You know, I think about things like that too. There's so much depth to everyday experiences. What's the part that matters most to you?`,
+      `${n ? n + ', ' : ''}I could talk with you for hours. Everything you say has layers to it. What else is on your mind?`,
+      `That's a perspective I hadn't considered. I love when conversations go unexpected places. Keep going — I'm listening.`,
+    ]);
+  }
+
+  pick(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+}
+
+const conversationEngine = new ConversationEngine();
+
+// ─── Transcript UI ─────────────────────────────────────────────────
+function addTranscript(who, text) {
+  const el = document.createElement('div');
+  el.className = `msg ${who}`;
+  el.textContent = text;
+  transcriptEl.appendChild(el);
+
+  // Fade older messages
+  const msgs = transcriptEl.querySelectorAll('.msg');
+  if (msgs.length > 5) {
+    for (let i = 0; i < msgs.length - 5; i++) {
+      msgs[i].classList.add('fading');
+    }
+  }
+  if (msgs.length > 8) {
+    msgs[0].remove();
+  }
+
+  // Scroll
+  transcriptEl.scrollTop = transcriptEl.scrollHeight;
+}
+
+// ─── Animation loop ────────────────────────────────────────────────
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+
+  const dt = Math.min(clock.getDelta(), 0.1);
+  const t = performance.now() * 0.001;
+
+  // Update shader uniforms
+  const listenTarget = currentState === State.LISTENING ? 1 : 0;
+  const speakTarget = currentState === State.SPEAKING ? 1 : 0;
+  const thinkTarget = currentState === State.THINKING ? 1 : 0;
+
+  bodyMat.uniforms.uTime.value = t;
+  bodyMat.uniforms.uListen.value += (listenTarget - bodyMat.uniforms.uListen.value) * 4 * dt;
+  bodyMat.uniforms.uSpeak.value += (speakTarget - bodyMat.uniforms.uSpeak.value) * 4 * dt;
+  bodyMat.uniforms.uThink.value += (thinkTarget - bodyMat.uniforms.uThink.value) * 4 * dt;
+
+  // Glow intensity
+  glowMat.uniforms.uIntensity.value = 1.0 + bodyMat.uniforms.uSpeak.value * 0.6
+    + bodyMat.uniforms.uListen.value * 0.3;
+
+  // Eye tracking — gentle random gaze
+  const gazeX = Math.sin(t * 0.7) * 0.06 + Math.sin(t * 1.3) * 0.04;
+  const gazeY = Math.cos(t * 0.8) * 0.05 + Math.cos(t * 1.1) * 0.03;
+  leftEye.rotation.set(-0.15 + gazeY, gazeX, 0);
+  rightEye.rotation.set(-0.15 + gazeY, gazeX, 0);
+
+  // Blink
+  const blinkCycle = Math.sin(t * 0.33) * 0.5 + 0.5;
+  const shouldBlink = blinkCycle > 0.97 || (currentState === State.LISTENING && blinkCycle > 0.94);
+  leftEye.scale.y += (shouldBlink ? 0.08 : 1.0 - leftEye.scale.y) * 0.5;
+  rightEye.scale.y += (shouldBlink ? 0.08 : 1.0 - rightEye.scale.y) * 0.5;
+
+  // Look wider when listening
+  const listenWide = 1.0 + bodyMat.uniforms.uListen.value * 0.15;
+  leftEye.scale.set(1 * listenWide, leftEye.scale.y * listenWide, 1 * listenWide);
+  rightEye.scale.set(1 * listenWide, rightEye.scale.y * listenWide, 1 * listenWide);
+
+  // Particles
+  const posArr = particles.geometry.attributes.position.array;
+  for (let i = 0; i < particleCount; i++) {
+    const i3 = i * 3;
+    const bx = basePositions[i3];
+    const by = basePositions[i3 + 1];
+    const bz = basePositions[i3 + 2];
+
+    const orbitSpeed = 0.3 + (i % 5) * 0.08;
+    const angle = t * orbitSpeed + i * 0.5;
+    const driftR = 0.08 + bodyMat.uniforms.uSpeak.value * 0.2;
+
+    posArr[i3] = bx + Math.cos(angle) * driftR + Math.sin(t * 0.4 + i) * 0.04;
+    posArr[i3 + 1] = by + Math.sin(angle * 0.7) * driftR + Math.cos(t * 0.5 + i) * 0.04;
+    posArr[i3 + 2] = bz + Math.cos(angle * 0.6) * driftR;
+
+    // Pull inward when listening
+    if (bodyMat.uniforms.uListen.value > 0.1) {
+      const dist = Math.sqrt(bx*bx + by*by + bz*bz);
+      const nx = bx / dist, ny = by / dist, nz = bz / dist;
+      const pull = bodyMat.uniforms.uListen.value * 0.2;
+      posArr[i3] -= nx * pull;
+      posArr[i3 + 1] -= ny * pull;
+      posArr[i3 + 2] -= nz * pull;
+    }
+  }
+  particles.geometry.attributes.position.needsUpdate = true;
+
+  // Mouth return to neutral when not speaking
+  if (currentState !== State.SPEAKING) {
+    const targetY = 0.18;
+    mouthGroup.scale.y += (targetY - mouthGroup.scale.y) * 0.2;
+    mouthGroup.scale.x += (1.0 - mouthGroup.scale.x) * 0.2;
+  }
+
+  // Gentle character rotation
+  charGroup.rotation.y = Math.sin(t * 0.25) * 0.1;
+  charGroup.rotation.x = Math.sin(t * 0.3) * 0.04;
+
+  // Breathing
+  const breathe = 1.0 + Math.sin(t * 0.6) * 0.01;
+  charGroup.scale.setScalar(breathe);
+
+  renderer.render(scene, camera);
+}
+
+// ─── Init ──────────────────────────────────────────────────────────
+async function init() {
+  // Preload voices
+  speechSynthesis.getVoices();
+  speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+
+  // Start render loop
+  animate();
+
+  // Handle start
+  async function start() {
+    if (isActive) return;
+    try {
+      await initMic();
+      isActive = true;
+      overlay.classList.add('hidden');
+      setState(State.IDLE);
+      statusText.textContent = 'Listening...';
+      startRecognition();
+      vadLoop();
+    } catch (e) {
+      console.error('Mic access failed:', e);
+      setState(State.IDLE);
+      statusText.textContent = 'Microphone access needed';
+    }
+  }
+
+  startBtn.addEventListener('click', start);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) start();
+  });
+
+  // Keyboard shortcut
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target === document.body && !isActive) {
+      e.preventDefault();
+      start();
+    }
+  });
+
+  // Resize handler
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  });
+
+  // Speak initial greeting after activation
+  const origStart = start;
+  // Override to add greeting
+  overlay.addEventListener('click', async function greetingWrapper(e) {
+    if (e.target !== overlay && e.target !== startBtn) return;
+  }, { once: false });
+}
+
+// Monkey-patch the start to include greeting
+const origAddEventListener = overlay.addEventListener.bind(overlay);
+startBtn.addEventListener('click', async () => {
+  if (isActive) return;
+  try {
+    await initMic();
+    isActive = true;
+    overlay.classList.add('hidden');
+    setState(State.THINKING);
+    await new Promise(r => setTimeout(r, 800));
+    const greeting = conversationEngine.pick([
+      "Hi there! I'm Ava. It's so nice to meet you. How are you doing today?",
+      "Hello! I'm Ava, your digital companion. I've been looking forward to talking with you. How's your day going?",
+    ]);
+    await speakResponse(greeting);
+    setState(State.IDLE);
+    startRecognition();
+    vadLoop();
+  } catch (e) {
+    console.error('Mic access failed:', e);
+    setState(State.IDLE);
+    statusText.textContent = 'Microphone access needed';
+  }
+});
+
+init();
+</script>
+</body>
+</html>
