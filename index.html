@@ -144,29 +144,159 @@
 
   .hero-visual {
     position: relative;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.25rem;
   }
-  .hero-orb {
-    width: 320px; height: 320px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 40% 40%, #FDF0EB 0%, var(--coral) 40%, var(--teal) 100%);
-    opacity: 0.85;
-    animation: orbPulse 4s ease-in-out infinite;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 20px 60px rgba(13, 115, 119, 0.2);
-  }
-  .hero-orb-inner {
-    width: 160px; height: 160px;
-    border-radius: 50%;
-    background: white;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: var(--shadow-lg);
-  }
-  .hero-orb-inner svg { width: 80px; height: 80px; }
 
-  @keyframes orbPulse {
+  /* Avatar container */
+  .avatar-container {
+    position: relative;
+    width: 300px; height: 300px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+
+  /* Face */
+  .avatar-face {
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    position: relative; z-index: 2;
+    animation: avatarBreathe 4s ease-in-out infinite;
+    filter: drop-shadow(0 8px 24px rgba(13, 115, 119, 0.15));
+  }
+  .avatar-face svg { width: 100%; height: 100%; }
+
+  @keyframes avatarBreathe {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.04); }
+    50% { transform: scale(1.03); }
+  }
+
+  /* Listening rings */
+  .avatar-rings { position: absolute; inset: 0; z-index: 1; }
+  .ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid rgba(13, 115, 119, 0.2);
+    opacity: 0;
+    transform: scale(1.0);
+  }
+  .avatar-container.listening .ring { animation: ringPulse 1.8s ease-out infinite; }
+  .avatar-container.listening .ring-2 { animation-delay: 0.6s; }
+  .avatar-container.listening .ring-3 { animation-delay: 1.2s; }
+  .avatar-container.listening .avatar-face { animation: avatarBreathe 3s ease-in-out infinite; }
+
+  @keyframes ringPulse {
+    0% { transform: scale(1.0); opacity: 0.5; border-color: rgba(13, 115, 119, 0.3); }
+    70% { transform: scale(1.35); opacity: 0.15; border-color: rgba(232, 129, 94, 0.3); }
+    100% { transform: scale(1.35); opacity: 0; }
+  }
+
+  /* Speaking state */
+  .avatar-container.speaking .avatar-face {
+    animation: avatarBreathe 2.5s ease-in-out infinite;
+  }
+
+  /* Processing state */
+  .avatar-container.processing .avatar-face {
+    animation: avatarPulse 0.8s ease-in-out infinite;
+  }
+  @keyframes avatarPulse {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 8px 24px rgba(13, 115, 119, 0.15)); }
+    50% { transform: scale(1.04); filter: drop-shadow(0 8px 32px rgba(232, 129, 94, 0.3)); }
+  }
+
+  /* Eye blink */
+  .blinking .eye { animation: eyeBlink 0.25s ease-in-out; }
+  @keyframes eyeBlink {
+    0% { transform: scaleY(1); }
+    50% { transform: scaleY(0.05); }
+    100% { transform: scaleY(1); }
+  }
+
+  /* Eye attentive (listening) */
+  .listening .eye ellipse { stroke: var(--coral); transition: stroke 0.3s; }
+  .listening .pupil { r: 7; transition: r 0.3s; }
+  .speaking .eye ellipse { stroke: var(--teal); }
+
+  /* Eyebrow expressions */
+  .listening .eyebrow { stroke: var(--coral); transition: stroke 0.3s; }
+  .speaking .eyebrow { stroke: var(--teal); }
+
+  /* Mouth animations */
+  .mouth-open, .mouth-closed { transition: opacity 0.15s; }
+  .speaking .mouth-closed { opacity: 0; }
+  .speaking .mouth-open { opacity: 1; animation: mouthTalk 0.25s ease-in-out infinite alternate; }
+  @keyframes mouthTalk {
+    0% { ry: 14px; }
+    100% { ry: 4px; }
+  }
+
+  /* Talk button */
+  .avatar-talk-btn {
+    position: absolute; bottom: 8px; right: 64px; z-index: 3;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: var(--teal);
+    color: white;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(13, 115, 119, 0.35);
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  }
+  .avatar-talk-btn:hover { background: var(--teal-dark); transform: scale(1.06); }
+  .avatar-talk-btn:active { transform: scale(0.96); }
+  .avatar-container.listening .avatar-talk-btn {
+    background: var(--coral);
+    box-shadow: 0 4px 24px rgba(232, 129, 94, 0.5);
+    animation: btnPulse 1.8s ease-in-out infinite;
+  }
+  .avatar-container.speaking .avatar-talk-btn {
+    background: var(--teal-dark);
+    pointer-events: none;
+  }
+  .avatar-container.processing .avatar-talk-btn {
+    pointer-events: none;
+    opacity: 0.6;
+  }
+  @keyframes btnPulse {
+    0%, 100% { box-shadow: 0 4px 24px rgba(232, 129, 94, 0.5); }
+    50% { box-shadow: 0 4px 40px rgba(232, 129, 94, 0.75); }
+  }
+
+  /* Status text */
+  .avatar-status {
+    font-size: 0.9rem;
+    color: var(--gray);
+    text-align: center;
+    min-height: 1.5em;
+    transition: color 0.3s;
+  }
+  .listening ~ .avatar-status { color: var(--coral); font-weight: 500; }
+  .speaking ~ .avatar-status { color: var(--teal); font-weight: 500; }
+
+  /* Transcript */
+  .avatar-transcript {
+    max-width: 320px;
+    min-height: 3em;
+    font-size: 0.85rem;
+    color: var(--gray);
+    text-align: center;
+    line-height: 1.5;
+  }
+  .avatar-transcript .user-msg { color: var(--charcoal); }
+  .avatar-transcript .kin-msg { color: var(--teal); }
+
+  /* Unsupported banner */
+  .browser-unsupported {
+    background: #FFF3CD; color: #856404;
+    padding: 0.6rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    text-align: center;
+    max-width: 320px;
+    display: none;
   }
 
   /* Stats row */
@@ -445,9 +575,8 @@
     .menu-toggle { display: block; }
     .hero .container { grid-template-columns: 1fr; gap: 3rem; }
     .hero-visual { order: -1; }
-    .hero-orb { width: 220px; height: 220px; }
-    .hero-orb-inner { width: 120px; height: 120px; }
-    .hero-orb-inner svg { width: 56px; height: 56px; }
+    .avatar-container { width: 240px; height: 240px; }
+    .avatar-face { width: 160px; height: 160px; }
     .stats-grid { grid-template-columns: 1fr; gap: 1.5rem; }
     .problem-grid { grid-template-columns: 1fr; }
     .solution-split { grid-template-columns: 1fr; gap: 2rem; }
@@ -496,17 +625,45 @@
       </div>
     </div>
     <div class="hero-visual">
-      <div class="hero-orb">
-        <div class="hero-orb-inner">
-          <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="40" cy="30" r="12" stroke="#0D7377" stroke-width="2.5" fill="none"/>
-            <path d="M20 55c0-11 9-20 20-20s20 9 20 20" stroke="#0D7377" stroke-width="2.5" stroke-linecap="round"/>
-            <circle cx="33" cy="28" r="2" fill="#0D7377"/>
-            <circle cx="47" cy="28" r="2" fill="#0D7377"/>
-            <path d="M32 38c2 2 5 3 8 3s6-1 8-3" stroke="#E8815E" stroke-width="2" stroke-linecap="round"/>
+      <div class="avatar-container" id="avatar">
+        <div class="avatar-rings" id="avatarRings">
+          <div class="ring ring-1"></div>
+          <div class="ring ring-2"></div>
+          <div class="ring ring-3"></div>
+        </div>
+        <div class="avatar-face" id="avatarFace">
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <!-- Head -->
+            <circle cx="100" cy="100" r="88" fill="white" stroke="#E5E7EB" stroke-width="1.5"/>
+            <!-- Left eye -->
+            <g class="eye left-eye">
+              <ellipse cx="72" cy="92" rx="14" ry="16" fill="white" stroke="var(--teal)" stroke-width="2"/>
+              <circle class="pupil" cx="74" cy="92" r="6" fill="var(--teal)"/>
+              <circle cx="76" cy="89" r="2" fill="white"/>
+            </g>
+            <!-- Right eye -->
+            <g class="eye right-eye">
+              <ellipse cx="128" cy="92" rx="14" ry="16" fill="white" stroke="var(--teal)" stroke-width="2"/>
+              <circle class="pupil" cx="130" cy="92" r="6" fill="var(--teal)"/>
+              <circle cx="132" cy="89" r="2" fill="white"/>
+            </g>
+            <!-- Eyebrows -->
+            <path class="eyebrow left-brow" d="M56 72 Q72 66 86 72" stroke="var(--teal)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path class="eyebrow right-brow" d="M114 72 Q128 66 144 72" stroke="var(--teal)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <!-- Nose -->
+            <path d="M98 108 Q100 118 94 122 Q100 124 106 122 Q100 118 102 108" fill="none" stroke="#D1D5DB" stroke-width="1.5" stroke-linecap="round"/>
+            <!-- Mouth - closed -->
+            <path class="mouth-closed" id="mouthClosed" d="M75 145 Q100 155 125 145" stroke="var(--coral)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <!-- Mouth - open (hidden by default) -->
+            <ellipse class="mouth-open" id="mouthOpen" cx="100" cy="150" rx="20" ry="12" fill="var(--coral)" opacity="0"/>
           </svg>
         </div>
+        <button class="avatar-talk-btn" id="talkBtn" aria-label="Talk to Kin">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
       </div>
+      <div class="avatar-status" id="avatarStatus">Tap the microphone to talk</div>
+      <div class="avatar-transcript" id="transcript"></div>
     </div>
   </div>
 </section>
@@ -812,35 +969,29 @@
 </footer>
 
 <script>
-  // Smooth scroll for anchor links
+  // ── Smooth scroll ────────────────────────────────────────────────
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function(e) {
       e.preventDefault();
       const target = document.querySelector(this.getAttribute('href'));
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
 
-  // Nav background on scroll
+  // ── Nav shadow on scroll ─────────────────────────────────────────
   const nav = document.querySelector('nav');
   let ticking = false;
   window.addEventListener('scroll', () => {
     if (!ticking) {
       requestAnimationFrame(() => {
-        if (window.scrollY > 20) {
-          nav.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-        } else {
-          nav.style.boxShadow = 'none';
-        }
+        nav.style.boxShadow = window.scrollY > 20 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none';
         ticking = false;
       });
       ticking = true;
     }
   }, { passive: true });
 
-  // Fade in on scroll
+  // ── Scroll fade-in ───────────────────────────────────────────────
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -856,6 +1007,295 @@
     el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
     observer.observe(el);
   });
+
+  // ── Digital Human: Avatar + Speech API ───────────────────────────
+
+  const avatar = document.getElementById('avatar');
+  const talkBtn = document.getElementById('talkBtn');
+  const statusEl = document.getElementById('avatarStatus');
+  const transcriptEl = document.getElementById('transcript');
+  const face = document.getElementById('avatarFace');
+
+  // Check browser support
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const hasSpeech = !!SpeechRecognition && !!window.speechSynthesis;
+
+  let recognition = null;
+  let isListening = false;
+  let blinkTimer = null;
+  let conversationContext = [];
+
+  function setState(state) {
+    avatar.classList.remove('listening', 'speaking', 'processing');
+    if (state) avatar.classList.add(state);
+  }
+
+  function setStatus(text) {
+    statusEl.textContent = text;
+  }
+
+  function addMessage(who, text) {
+    const cls = who === 'user' ? 'user-msg' : 'kin-msg';
+    const label = who === 'user' ? 'You' : 'Kin';
+    transcriptEl.innerHTML = `<span class="${cls}"><strong>${label}:</strong> ${text}</span>`;
+  }
+
+  // ── Blink ───────────────────────────────────────────────────────
+  function scheduleBlink() {
+    const delay = 2000 + Math.random() * 4000;
+    blinkTimer = setTimeout(() => {
+      face.classList.add('blinking');
+      setTimeout(() => face.classList.remove('blinking'), 250);
+      scheduleBlink();
+    }, delay);
+  }
+
+  // ── Mouth animation while speaking ──────────────────────────────
+  let mouthInterval = null;
+
+  function startMouthAnim() {
+    const mouthOpen = document.getElementById('mouthOpen');
+    const mouthClosed = document.getElementById('mouthClosed');
+    mouthClosed.style.opacity = '0';
+    mouthOpen.style.opacity = '1';
+    let open = true;
+    mouthInterval = setInterval(() => {
+      open = !open;
+      mouthOpen.setAttribute('ry', open ? (8 + Math.random() * 10) : (2 + Math.random() * 4));
+    }, 120 + Math.random() * 80);
+  }
+
+  function stopMouthAnim() {
+    clearInterval(mouthInterval);
+    mouthInterval = null;
+    const mouthOpen = document.getElementById('mouthOpen');
+    const mouthClosed = document.getElementById('mouthClosed');
+    mouthOpen.style.opacity = '0';
+    mouthClosed.style.opacity = '0';
+  }
+
+  // ── Speak response ──────────────────────────────────────────────
+  function speakResponse(text) {
+    return new Promise((resolve) => {
+      setState('speaking');
+      setStatus('Speaking...');
+      addMessage('kin', text);
+      startMouthAnim();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.92;
+      utterance.pitch = 1.05;
+
+      // Pick a warm female voice if available
+      const voices = speechSynthesis.getVoices();
+      const preferred = voices.find(v =>
+        v.name.includes('Samantha') || v.name.includes('Karen') ||
+        v.name.includes('Female') || v.name.includes('Zira')
+      );
+      if (preferred) utterance.voice = preferred;
+
+      utterance.onend = () => {
+        stopMouthAnim();
+        setState('');
+        setStatus('Tap the microphone to talk');
+        resolve();
+      };
+
+      utterance.onerror = () => {
+        stopMouthAnim();
+        setState('');
+        setStatus('Tap the microphone to talk');
+        resolve();
+      };
+
+      speechSynthesis.speak(utterance);
+    });
+  }
+
+  // ── Process what the user said ──────────────────────────────────
+  function processInput(transcript) {
+    const input = transcript.toLowerCase().trim();
+    conversationContext.push(input);
+
+    // Keep context manageable
+    if (conversationContext.length > 10) conversationContext.shift();
+
+    // Simple rule-based responses for the demo
+    if (input.match(/\b(hello|hi|hey|good morning|good afternoon)\b/)) {
+      return "Hello! It's good to see you. How are you feeling today?";
+    }
+    if (input.match(/\bhow are you\b/)) {
+      return "I'm doing well, thank you for asking. More importantly — how are you feeling? Have you taken your medications today?";
+    }
+    if (input.match(/\b(tired|exhausted|fatigued|no energy)\b/)) {
+      return "I understand — fatigue can be part of recovery. Have you been able to rest today? And did you take your evening medications?";
+    }
+    if (input.match(/\b(pain|hurts|aching|sore)\b/)) {
+      return "I'm sorry you're in pain. On a scale of 1 to 10, how would you rate it? If it's above a 6, I'd like to connect you with a nurse.";
+    }
+    if (input.match(/\b(medication|meds|pills|prescription)\b/)) {
+      return "Taking your medications on schedule is really important for your recovery. Are you able to take them as prescribed, or are you having any trouble?";
+    }
+    if (input.match(/\b(breath|breathing|short of breath|wheezing)\b/)) {
+      return "Shortness of breath is something we take very seriously. Let me connect you with a nurse right away. In the meantime, please sit down and try to stay calm.";
+    }
+    if (input.match(/\b(appointment|doctor|follow.up|checkup)\b/)) {
+      return "Your follow-up appointment is important. Would you like me to confirm the date and time, or help you reschedule?";
+    }
+    if (input.match(/\b(thank|thanks|appreciate)\b/)) {
+      return "You're very welcome. I'm here any time you need me — day or night. Is there anything else I can help with?";
+    }
+    if (input.match(/\b(bye|goodbye|see you|later)\b/)) {
+      return "Goodbye for now. Remember, I'll check in with you tomorrow. Take care of yourself.";
+    }
+    if (input.match(/\b(who are you|what are you|your name)\b/)) {
+      return "I'm Ava, your digital care companion from Kin. I check in on you after your hospital stay to make sure you're recovering well. I can also connect you with a nurse if you need one.";
+    }
+    if (input.match(/\b(weather|outside|rain|sunny)\b/)) {
+      return "I'm focused on your health right now, but a little fresh air can be wonderful for recovery — as long as your doctor says it's okay. How are you feeling today?";
+    }
+
+    // Default: empathetic check-in
+    const defaults = [
+      "Thank you for sharing that. Your recovery is important to me. Is there anything specific about your health you'd like to discuss today?",
+      "I appreciate you telling me. To help me understand better — are you experiencing any new symptoms or concerns since your discharge?",
+      "I hear you. The most important thing is that you're recovering well. Have you been able to take your medications and follow your care plan?",
+      "That's helpful to know. I want to make sure your care team has the full picture. Is there anything you'd like me to share with your nurse?",
+    ];
+    return defaults[Math.floor(Math.random() * defaults.length)];
+  }
+
+  // ── Start listening ─────────────────────────────────────────────
+  function startListening() {
+    if (!hasSpeech) {
+      document.querySelector('.browser-unsupported').style.display = 'block';
+      return;
+    }
+
+    if (isListening) return;
+    isListening = true;
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    setState('listening');
+    setStatus('Listening...');
+    talkBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+
+    recognition.onresult = async (event) => {
+      const transcript = event.results[0][0].transcript.trim();
+      if (!transcript) {
+        stopListening();
+        return;
+      }
+
+      stopListening();
+      addMessage('user', transcript);
+      setState('processing');
+      setStatus('Thinking...');
+
+      // Small delay so the user sees "processing"
+      await new Promise(r => setTimeout(r, 600 + Math.random() * 600));
+
+      const response = processInput(transcript);
+      await speakResponse(response);
+
+      // Reset
+      talkBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
+    };
+
+    recognition.onerror = (event) => {
+      console.log('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed') {
+        setStatus('Microphone access denied');
+      } else if (event.error === 'no-speech') {
+        setStatus('No speech detected — tap to try again');
+      } else {
+        setStatus('Tap the microphone to talk');
+      }
+      stopListening();
+    };
+
+    recognition.onend = () => {
+      // If we're still in listening state and didn't get a result, reset
+      if (avatar.classList.contains('listening')) {
+        stopListening();
+      }
+    };
+
+    recognition.start();
+  }
+
+  function stopListening() {
+    isListening = false;
+    if (recognition) {
+      try { recognition.stop(); } catch (e) { /* already stopped */ }
+    }
+    setState('');
+    if (!avatar.classList.contains('speaking') && !avatar.classList.contains('processing')) {
+      setStatus('Tap the microphone to talk');
+    }
+    talkBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
+  }
+
+  // ── Event listeners ─────────────────────────────────────────────
+  talkBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (isListening) {
+      stopListening();
+    } else if (!avatar.classList.contains('speaking') && !avatar.classList.contains('processing')) {
+      startListening();
+    }
+  });
+
+  // Click on the face also toggles
+  avatar.addEventListener('click', () => {
+    if (isListening) {
+      stopListening();
+    } else if (!avatar.classList.contains('speaking') && !avatar.classList.contains('processing')) {
+      startListening();
+    }
+  });
+
+  // Keyboard shortcut: spacebar when hero is visible
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target === document.body) {
+      e.preventDefault();
+      const heroRect = document.querySelector('.hero').getBoundingClientRect();
+      if (heroRect.bottom > 0 && heroRect.top < window.innerHeight) {
+        if (isListening) {
+          stopListening();
+        } else if (!avatar.classList.contains('speaking') && !avatar.classList.contains('processing')) {
+          startListening();
+        }
+      }
+    }
+  });
+
+  // ── Init ────────────────────────────────────────────────────────
+  function init() {
+    scheduleBlink();
+
+    if (!hasSpeech) {
+      setStatus('Speech not supported in this browser');
+      talkBtn.style.opacity = '0.4';
+      talkBtn.style.pointerEvents = 'none';
+      const banner = document.createElement('div');
+      banner.className = 'browser-unsupported';
+      banner.textContent = 'Speech recognition works best in Chrome or Edge. Try opening this page in one of those browsers.';
+      banner.style.display = 'block';
+      document.querySelector('.hero-visual').appendChild(banner);
+      return;
+    }
+
+    // Preload voices
+    speechSynthesis.getVoices();
+    speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+  }
+
+  init();
 </script>
 </body>
 </html>
